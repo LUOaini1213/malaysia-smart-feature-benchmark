@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.pdf binary
+# input snapshot is kept byte-for-byte
+data/*.tsv -text
