@@ -17,6 +17,7 @@
 用法：
   python jpj_market.py                              # 使用默认 TSV 路径，输出到脚本所在目录
   python jpj_market.py --tsv <路径> --out <目录>
+  python jpj_market.py --check                      # 重算到临时目录，逐字节对比仓库里的 6 个 CSV，不一致就退出码 1
 
 输出（UTF-8 带 BOM，Excel 直接打开不乱码）：
   jpj_market_summary.csv          关键指标（总量、份额、同比）
@@ -31,11 +32,19 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
-DEFAULT_TSV = Path(
-    Path(__file__).resolve().parent / "data" / "expected_aggregates.tsv"
+REPO_DIR = Path(__file__).resolve().parent
+DEFAULT_TSV = REPO_DIR / "data" / "expected_aggregates.tsv"
+OUTPUT_FILES = (
+    "jpj_market_summary.csv",
+    "jpj_market_brand_top15.csv",
+    "jpj_market_chery_monthly.csv",
+    "jpj_market_chinese_brands.csv",
+    "jpj_market_chinese_monthly.csv",
+    "jpj_market_fuel_monthly.csv",
 )
 
 # ---- 品牌归类（口径表；改动这里即可重算） ----
@@ -154,8 +163,10 @@ def yoy(cur: int, prev: int) -> str:
 
 
 def write_csv(path: Path, header, rows):
+    # 固定 LF 行尾：csv.writer 默认写 CRLF，而仓库按 .gitattributes 以 LF 保存，
+    # 不固定的话重跑后每个文件的字节都会变。
     with path.open("w", encoding="utf-8-sig", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, lineterminator="\n")
         w.writerow(header)
         w.writerows(rows)
     print(f"[输出] {path.name}（{len(rows)} 行）")
@@ -177,8 +188,12 @@ def main(argv=None) -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tsv", type=Path, default=DEFAULT_TSV)
-    ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent)
+    ap.add_argument("--out", type=Path, default=REPO_DIR)
+    ap.add_argument("--check", action="store_true",
+                    help="重算到临时目录，逐字节对比 --out 目录（默认仓库根目录）里的 6 个 CSV，不一致则返回 1")
     args = ap.parse_args(argv)
+    if args.check:
+        return check(args.tsv, args.out)
     total, month, maker, fuel, month_maker, month_fuel = load(args.tsv)
     args.out.mkdir(parents=True, exist_ok=True)
 
@@ -277,6 +292,24 @@ def main(argv=None) -> int:
         rest = ev - maker_sum(["BYD", "Tesla"], ms)
         rows.append(["纯电中来自BYD/Tesla以外品牌(下限)", p, rest, pct(rest, ev), "同期纯电登记"])
     write_csv(args.out / "jpj_market_summary.csv", ["指标", "期间", "登记量或同比%", "占比%", "占比分母"], rows)
+    return 0
+
+
+def check(tsv: Path, committed_dir: Path) -> int:
+    """重算到临时目录，逐字节对比已提交的 CSV。"""
+    with tempfile.TemporaryDirectory() as tmp:
+        main(["--tsv", str(tsv), "--out", tmp])
+        bad = []
+        for name in OUTPUT_FILES:
+            ref = committed_dir / name
+            if not ref.exists():
+                bad.append(f"{name}：仓库里没有这个文件")
+            elif ref.read_bytes() != (Path(tmp) / name).read_bytes():
+                bad.append(f"{name}：与重算结果不一致")
+    if bad:
+        print("[check] 失败：" + "; ".join(bad))
+        return 1
+    print(f"[check] {len(OUTPUT_FILES)} 个 CSV 与重算结果逐字节一致")
     return 0
 
 

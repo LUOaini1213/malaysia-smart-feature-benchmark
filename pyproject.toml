@@ -1,0 +1,6 @@
+[project]
+name = "malaysia-smart-feature-benchmark"
+version = "0.1.0"
+description = "Malaysia / SEA ADAS and cockpit feature benchmark: JPJ market tables, requirements, feature matrix, SOR"
+requires-python = ">=3.10"
+dependencies = []

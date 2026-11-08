@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Regenerated CSVs are byte-identical
+        run: python jpj_market.py --check
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+      - name: In-place rerun leaves the tree clean
+        shell: bash
+        run: |
+          python jpj_market.py > /dev/null
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+      - name: No local machine paths in tracked text
+        shell: bash
+        run: |
+          if git grep -nIE '(^|[^A-Za-z])[A-Za-z]:[\]|[\/]Users[\/]|/home/[a-z]' -- . ':!tests/test_repro.py' ':!.github/workflows/ci.yml'; then
+            echo "local path found"; exit 1
+          fi
