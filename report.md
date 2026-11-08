@@ -337,7 +337,7 @@ Annex II 的日期代码有两个日期：第一个起拒绝新车型型式批�
 ## 8. 来源列表（访问日期均为 2026-10-27）
 
 **数据**
-- [S1] JPJ 登记汇总 TSV（只读）：`E:\C盘整理_20261012\项目审查\malaysia-auto-ask\warehouse\serving\inputs\expected_aggregates.tsv`（冻结快照，截至 2026-08-31）
+- [S1] JPJ 登记汇总 TSV（只读）：本仓库 [`data/expected_aggregates.tsv`](data/expected_aggregates.tsv)，是 [LUOaini1213/malaysia-auto-ask](https://github.com/LUOaini1213/malaysia-auto-ask) 提交 `9b7faff` 中 `warehouse/serving/inputs/expected_aggregates.tsv` 的冻结快照（截至 2026-08-31）
 - [S2] data.gov.my，Car Registration Transactions（JPJ、交通部，CC BY 4.0），数据目录和字段说明：https://data.gov.my/data-catalogue/registration_transactions_car
 
 **ASEAN NCAP**

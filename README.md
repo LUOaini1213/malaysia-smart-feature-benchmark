@@ -1,6 +1,10 @@
 # 马来西亚 / 东南亚市场智能化功能需求与法规对标
 
-> **English summary.** A requirements and regulation benchmark for ADAS and cockpit features in Malaysia / Southeast Asia: a reproducible market analysis of Malaysian JPJ vehicle registrations (Jan 2025 – Aug 2026, 1,436,804 registrations), 46 requirements from official sources (ASEAN NCAP 2026–2030 including IVASA, EU GSR, UN R152/R79/R156, Malaysia's VTA), a 7-model feature matrix with a source URL and quote for every cell, and a P0/P1/P2 feature-priority list in SOR style. Facts and recommendations are kept apart, and anything not found in an official source is marked "未核实" (unverified).
+> **English summary.** A desk-research benchmark of ADAS and cockpit features for Malaysia / Southeast Asia.
+>
+> - **Built:** a stdlib-only script that recomputes the market tables from a frozen snapshot of Malaysian JPJ registrations (Jan 2025 – Aug 2026, 1,436,804 registrations) with 45 consistency checks; 46 requirements from official sources (ASEAN NCAP 2026–2030 incl. IVASA, EU GSR, UN R152/R79/R156, Malaysia's VTA); a 7-model × 23-feature matrix in which 110 of 161 cells cite an official URL and a verbatim quote and the other 51 are marked "未核实" (unverified); and a P0/P1/P2 priority list of 23 SOR-style items.
+> - **Found:** Malaysia does not yet mandate AEB for M1 cars; ASEAN NCAP is what pushes it (without AEB, Safety Assist tops out at about 68% against a 75% five-star threshold, derived from the official points). Chery+Jetour registration share rose from 3.92% to 5.07% (Jan–Aug 2025 vs 2026), mostly from Jetour (+538.6%; Chery brand +3.7%); battery-EV share rose from 4.24% to 8.38%.
+> - **Limits:** registrations are not sales; the data has no model field, so the chosen models are not verified as each brand's best seller; only the top trim of each model was checked. `python jpj_market.py --check` and `python -m unittest discover -s tests` pin the tables and the numbers above.
 
 个人项目（2026-10），使用 AI 工具辅助完成。练习的工作内容：梳理海外市场需求、做技术方案可行性分析、跟踪海外法规与竞品、规划智能功能迭代。
 
@@ -8,7 +12,7 @@
 
 1. **市场**：用 JPJ 登记汇总（2025-01 至 2026-08，共 1,436,804 次登记）算出品牌排名、奇瑞系和中国品牌的份额、纯电份额及趋势。脚本可以重跑，并带 45 项一致性校验。
 2. **法规与评级**：整理了 46 条要求，来源只用官方文件，覆盖 ASEAN NCAP 2026–2030 规程与 IVASA、欧盟 GSR (EU) 2019/2144 及其实施细则、UN R152/R79/R156 等、马来西亚 JPJ 的 VTA 型式认证。每条都有条款、生效日期或版本，以及来源 URL。
-3. **竞品**：从马来西亚官网和官方手册收集 7 款 SUV 的智驾与座舱配置，共 23 项、161 格，每格有 URL 和原文摘录，查不到的标「未核实」。车型为 Jaecoo J7、Omoda E5、Proton X50、Perodua Ativa、Toyota Corolla Cross、Honda HR-V、BYD Atto 3。
+3. **竞品**：从马来西亚官网和官方手册收集 7 款 SUV 的智驾与座舱配置，共 23 项、161 格：110 格有官方 URL 和原文摘录，其余 51 格查不到官方来源，标「未核实」。车型为 Jaecoo J7、Omoda E5、Proton X50、Perodua Ativa、Toyota Corolla Cross、Honda HR-V、BYD Atto 3。
 4. **综合**：按 SOR 格式写了「功能需求优先级 + 可行性备注」，分 P0/P1/P2 共 23 条，事实和建议分开写。
 
 ## 主要发现（出处见 report.md）
@@ -34,18 +38,22 @@ CSV 都是 UTF-8 带 BOM，Excel 可以直接打开。
 
 ## 如何重跑市场数据
 
-需要 Python 3.10 以上，不用安装第三方包。在仓库根目录执行：
+需要 Python 3.10 以上（CI 用 3.11，Ubuntu 和 Windows 都跑），不用安装第三方包。在仓库根目录执行：
 
 ```bash
 python jpj_market.py
 # 或者指定输入和输出位置
 python jpj_market.py --tsv data/expected_aggregates.tsv --out .
+# 只核对：重算到临时目录，逐字节对比仓库里的 6 个 CSV，不一致则退出码 1
+python jpj_market.py --check
+# 测试：重算一致性、README/报告里的数字、矩阵和法规清单的条数、来源编号、本机路径
+python -m unittest discover -s tests -v
 ```
 
 - **校验**：脚本先检查各切片合计是否一致（品牌、燃料、地区、月份合计都等于总数，每月的「品牌」「燃料」切片合计也等于当月总数），通过后才写 CSV。
 - **中国品牌口径**：口径表在脚本顶部的 `CN_BRANDS`，改完重跑即可。
 - **刷新数据**：输入是 [malaysia-auto-ask](https://github.com/LUOaini1213/malaysia-auto-ask) 仓库冻结的快照（截至 2026-08-31）。data.gov.my 已更新到 2026-09-30，要用新数据，需先用该仓库的管线重新生成 TSV。
-- **复现**：用 `data/` 里的快照重跑，6 个 `jpj_market_*.csv` 与仓库里的版本逐字节一致（2026-10-27 验证）。
+- **复现**：用 `data/` 里的快照重跑，6 个 `jpj_market_*.csv` 与仓库里的版本逐字节一致（行尾固定为 LF，在仓库根目录原地重跑后 `git status` 保持干净）。这一点由 `python jpj_market.py --check` 和 `tests/test_repro.py` 在 CI 中检查。
 
 ## 核实规则和局限
 
